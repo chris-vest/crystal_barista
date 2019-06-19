@@ -512,7 +512,7 @@ func main() {
 				return nil
 			}
 			out := outputs.Group(
-				pango.Icon("fab-github").
+				pango.Icon("mdi-github-circle").
 					Concat(spacer).
 					ConcatTextf("%d", n.Total()))
 			mentions := n["mention"] + n["team_mention"]
