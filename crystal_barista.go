@@ -112,7 +112,7 @@ func mediaFormatFunc(m media.Info) bar.Output {
 	} else {
 		iconAndPosition = makeMediaIconAndPosition(m)
 	}
-	return outputs.Group(iconAndPosition, outputs.Pango(title, " - ", artist))
+	return outputs.Group(iconAndPosition, outputs.Pango(artist, " - ", title))
 }
 
 func home(path ...string) string {
@@ -395,7 +395,7 @@ func main() {
 			uptimeOut = pango.Textf("%dd%02dh",
 				int(u.Hours()/24), int(u.Hours())%24)
 		}
-		return pango.Icon("mdi-trending-up").Alpha(0.6).Concat(uptimeOut)
+		return pango.Icon("mdi-weather-sunset-up").Alpha(0.6).Concat(uptimeOut)
 	})
 
 	freeMem := meminfo.New().Output(func(m meminfo.Info) bar.Output {
@@ -419,7 +419,7 @@ func main() {
 		return outputs.Pango(
 			pango.Icon("mdi-swap-horizontal").Alpha(0.8),
 			format.IBytesize(m["SwapTotal"]-m["SwapFree"]), spacer,
-			pango.Textf("( % 2.0f%%)", (1-m.FreeFrac("Swap"))*100.0).Small(),
+			pango.Textf("(%2.0f%%)", (1-m.FreeFrac("Swap"))*100.0).Small(),
 		)
 	})
 
@@ -514,10 +514,10 @@ func main() {
 
 	mainModal := modal.New()
 	sysMode := mainModal.Mode("sysinfo").
-		SetOutput(makeIconOutput("mdi-google-analytics")).
-		Add(loadAvg).
+		SetOutput(makeIconOutput("mdi-chart-line-stacked")).
+		Detail(loadAvg).
 		Detail(loadAvgDetail, uptime).
-		Add(freeMem).
+		Detail(freeMem).
 		Detail(swapMem, temp)
 	if homeDiskspace != nil {
 		sysMode.Detail(homeDiskspace)
