@@ -5,11 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -31,6 +33,7 @@ import (
 	"barista.run/modules/meta/split"
 	"barista.run/modules/netinfo"
 	"barista.run/modules/netspeed"
+	"barista.run/modules/shell"
 	"barista.run/modules/sysinfo"
 	"barista.run/modules/volume"
 	"barista.run/modules/wlan"
@@ -202,6 +205,21 @@ func threshold(out *bar.Segment, urgent bool, color ...bool) *bar.Segment {
 	return out
 }
 
+func k8sCtx() []string {
+	// Get kubectl contexts
+	cmd := exec.Command("bash", "-c", "kubectl config get-contexts | awk {'print $2'} | sed 1d")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+	results := string(out)
+	fmt.Printf("combined out:\n%s\n", results)
+
+	contexts := strings.SplitAfter(results, "\n")
+
+	return contexts
+}
+
 func main() {
 	// material.Load(home("projects/material-design-icons"))
 	mdi.Load(home("projects/MaterialDesign-Webfont"))
@@ -362,6 +380,72 @@ func main() {
 		)
 	})
 
+	// KUBERNETES CONTEXTS
+	kubeContext := shell.New("kubectl", "config", "current-context").
+		Every(time.Second).
+		Output(func(context string) bar.Output {
+			out := outputs.Pango(
+				pango.Icon("mdi-ship-wheel").Color(colors.Hex("#429429")),
+				spacer,
+				pango.Textf(context).Color(colors.Hex("#429429")),
+			)
+			out.OnClick(click.Left(func() {
+				mainModalController.Toggle("kubeContext")
+			}))
+			return out
+		})
+
+	kubeNs := shell.New("bash", "-c", "kubectl config view -o=jsonpath=\"{.contexts[?(@.name=='$(kubectl config current-context)')].context.namespace}\"").
+		Every(time.Second).
+		Output(func(context string) bar.Output {
+			out := outputs.Pango(
+				pango.Icon("mdi-ship-wheel").Color(colors.Hex("#429429")),
+				spacer,
+				pango.Textf(context).Color(colors.Hex("#429429")),
+			)
+			// out.OnClick(click.Left(func() {
+			// 	mainModalController.Toggle("kubeContext")
+			// }))
+			return out
+		})
+
+	// k8scon := funcs.Every(10*time.Minute, func(s bar.Sink) {
+	// 	contexts := k8sCtx()
+	// 	// contextual := len(contexts)
+	// 	// if contextual != 0 {
+	// 	// 	for i := 0; i < contextual; i++ {
+	// 	// 		funcs.Once(func(s bar.Sink) {
+	// 	// 			s.Output(pango.Text(contexts[i]))
+	// 	// 		})
+	// 	// 	}
+	// 	// }
+	// 	output := contexts[0]
+	// 	s.Output(pango.Text(output))
+	// })
+	// KUBERNETES CONTEXTS
+
+	var nordVPNFormat = regexp.MustCompile(`.*?Status: (.*?)\n.*?\nCountry: (.*?)\nCity: (.*?)\n.*`)
+	nordVPN := shell.New("nordvpn", "status").
+		Every(time.Second).
+		Output(func(line string) bar.Output {
+			res := nordVPNFormat.FindStringSubmatch(line) // res[1] = status, res[2] = country, res[3] = city
+			status := res[1]
+			if status == "Disconnected" {
+				return outputs.Pango(
+					pango.Icon("mdi-vpn"),
+					spacer,
+					pango.Textf("NordVPN %s", status),
+				)
+			}
+			country := res[2]
+			city := res[3]
+			return outputs.Pango(
+				pango.Icon("mdi-vpn"),
+				spacer,
+				pango.Textf("NordVPN %s to %s, %s", status, city, country).Small(),
+			)
+		})
+
 	loadAvg := sysinfo.New().Output(func(s sysinfo.Info) bar.Output {
 		out := outputs.Pango(
 			pango.Icon("mdi-desktop-tower"),
@@ -517,13 +601,17 @@ func main() {
 		})
 
 	mainModal := modal.New()
-	mainModal.Mode("network").
-		SetOutput(makeIconOutput("mdi-ethernet")).
-		Summary(wifiName).
-		Detail(wifiDetails, netsp, net)
 	mainModal.Mode("notifications").
 		SetOutput(nil).
 		Add(ghNotify)
+	mainModal.Mode("kubeContext").
+		SetOutput(makeIconOutput("mdi-ship-wheel")).
+		Add(kubeContext).
+		Detail(kubeNs)
+	mainModal.Mode("network").
+		SetOutput(makeIconOutput("mdi-ethernet")).
+		Summary(wifiName).
+		Detail(wifiDetails, netsp, net, nordVPN)
 	mainModal.Mode("media").
 		SetOutput(makeIconOutput("mdi-music")).
 		Add(vol, mediaSummary).
@@ -549,7 +637,6 @@ func main() {
 		Detail(makeTzClock("Los Angeles", "America/Los_Angeles")).
 		Detail(makeTzClock("New York", "America/New_York")).
 		Detail(makeTzClock("UTC", "Etc/UTC")).
-		Detail(makeTzClock("GMT", "Etc/GMT")).
 		Detail(makeTzClock("Copenhagen", "Europe/Copenhagen")).
 		Detail(makeTzClock("Tokyo", "Asia/Tokyo"))
 
