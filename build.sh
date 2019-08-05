@@ -26,7 +26,7 @@ CONFIG_DIR="${XDG_CONFIG_HOME:-"$HOME/.config"}"
 # e.g. '%%OWM_API_KEY%%' in the go file will be replaced with the value
 # of $OWM_API_KEY.
 KEYS=(
-	'GITHUB_CLIENT_ID' 'GITHUB_CLIENT_SECRET'
+	'GITHUB_CLIENT_ID' 'GITHUB_CLIENT_SECRET' 'OWM_API_KEY'
 )
 
 TARGET_FILE="$(pwd)/crystal_barista.go"

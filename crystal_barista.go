@@ -36,6 +36,8 @@ import (
 	"barista.run/modules/shell"
 	"barista.run/modules/sysinfo"
 	"barista.run/modules/volume"
+	"barista.run/modules/weather"
+	"barista.run/modules/weather/openweathermap"
 	"barista.run/modules/wlan"
 	"barista.run/oauth"
 	"barista.run/outputs"
@@ -220,6 +222,19 @@ func k8sCtx() []string {
 	return contexts
 }
 
+type autoWeatherProvider struct{}
+
+func (a autoWeatherProvider) GetWeather() (weather.Weather, error) {
+	lat, lng, err := whereami()
+	if err != nil {
+		return weather.Weather{}, err
+	}
+	return openweathermap.
+		New("%%OWM_API_KEY%%").
+		Coords(lat, lng).
+		GetWeather()
+}
+
 func main() {
 	// material.Load(home("projects/material-design-icons"))
 	mdi.Load(home("projects/MaterialDesign-Webfont"))
@@ -380,6 +395,77 @@ func main() {
 		)
 	})
 
+	// WEATHER
+
+	// Weather information comes from OpenWeatherMap.
+	// https://openweathermap.org/api.
+	wthr := weather.New(autoWeatherProvider{}).Output(func(w weather.Weather) bar.Output {
+		iconName := ""
+		switch w.Condition {
+		case weather.Thunderstorm,
+			weather.TropicalStorm,
+			weather.Hurricane:
+			iconName = "stormy"
+		case weather.Drizzle,
+			weather.Hail:
+			iconName = "shower"
+		case weather.Rain:
+			iconName = "downpour"
+		case weather.Snow,
+			weather.Sleet:
+			iconName = "snow"
+		case weather.Mist,
+			weather.Smoke,
+			weather.Whirls,
+			weather.Haze,
+			weather.Fog:
+			iconName = "windy-cloudy"
+		case weather.Clear:
+			if !w.Sunset.IsZero() && time.Now().After(w.Sunset) {
+				iconName = "night"
+			} else if !w.Sunrise.IsZero() && time.Now().Before(w.Sunrise) {
+				iconName = "night"
+			} else {
+				iconName = "sunny"
+			}
+		case weather.PartlyCloudy:
+			iconName = "partly-sunny"
+		case weather.Cloudy, weather.Overcast:
+			iconName = "cloudy"
+		case weather.Tornado,
+			weather.Windy:
+			iconName = "windy"
+		}
+		if iconName == "" {
+			iconName = "warning-outline"
+		} else {
+			iconName = "weather-" + iconName
+		}
+		mainModalController.SetOutput("weather", makeIconOutput("mdi-"+iconName))
+		out := outputs.Group()
+		out.Append(outputs.Pango(
+			pango.Icon("mdi-"+iconName), spacer,
+			pango.Textf("%.1f℃", w.Temperature.Celsius()),
+		))
+		out.Append(outputs.Text(w.Description))
+		out.Append(outputs.Pango(
+			pango.Icon("mdi-flag-variant-outline").Alpha(0.8), spacer,
+			pango.Textf("%0.fmph %s", w.Wind.Speed.MilesPerHour(), w.Wind.Direction.Cardinal()),
+		))
+		out.Append(outputs.Pango(
+			pango.Icon("fa-tint").Alpha(0.6).Small(), spacer,
+			pango.Textf("%0.f%%", w.Humidity*100),
+		))
+		out.Append(outputs.Pango(
+			pango.Icon("mdi-weather-sunset-up").Alpha(0.8), spacer,
+			w.Sunrise.Format("15:04"), spacer,
+			pango.Icon("mdi-weather-sunset-down").Alpha(0.8), spacer,
+			w.Sunset.Format("15:04"),
+		))
+		out.Append(pango.Textf("provided by %s", w.Attribution).XSmall())
+		return out
+	})
+
 	// KUBERNETES CONTEXTS
 	kubeContext := shell.New("kubectl", "config", "current-context").
 		Every(time.Second).
@@ -399,8 +485,6 @@ func main() {
 		Every(time.Second).
 		Output(func(context string) bar.Output {
 			out := outputs.Pango(
-				pango.Icon("mdi-ship-wheel").Color(colors.Hex("#429429")),
-				spacer,
 				pango.Textf("Namespace: %s", context).Color(colors.Hex("#429429")),
 			)
 			return out
@@ -432,6 +516,7 @@ func main() {
 	loadAvg := sysinfo.New().Output(func(s sysinfo.Info) bar.Output {
 		out := outputs.Pango(
 			pango.Icon("mdi-desktop-tower"),
+			spacer,
 			pango.Textf("%0.2f", s.Loads[0]),
 		)
 		// Load averages are unusually high for a few minutes after boot.
@@ -464,12 +549,13 @@ func main() {
 			uptimeOut = pango.Textf("%dd%02dh",
 				int(u.Hours()/24), int(u.Hours())%24)
 		}
-		return pango.Icon("mdi-weather-sunset-up").Concat(uptimeOut)
+		return pango.Icon("mdi-weather-sunset-up").Concat(spacer, uptimeOut)
 	})
 
 	freeMem := meminfo.New().Output(func(m meminfo.Info) bar.Output {
 		out := outputs.Pango(
 			pango.Icon("mdi-memory"),
+			spacer,
 			format.IBytesize(m.Available()),
 		)
 		freeGigs := m.Available().Gigabytes()
@@ -487,7 +573,8 @@ func main() {
 	swapMem := meminfo.New().Output(func(m meminfo.Info) bar.Output {
 		return outputs.Pango(
 			pango.Icon("mdi-swap-horizontal"),
-			format.IBytesize(m["SwapTotal"]-m["SwapFree"]), spacer,
+			spacer,
+			format.IBytesize(m["SwapTotal"]-m["SwapFree"]),
 			pango.Textf("(%2.0f%%)", (1-m.FreeFrac("Swap"))*100.0).Small(),
 		)
 	})
@@ -544,7 +631,7 @@ func main() {
 	var homeDiskspace bar.Module
 	if deviceForMountPath(home()) != rootDev {
 		homeDiskspace = diskspace.New(home()).Output(func(i diskspace.Info) bar.Output {
-			return formatDiskSpace(i, "typecn-home-outline")
+			return formatDiskSpace(i, "mdi-home-outline")
 		})
 	}
 	rootDiskspace := diskspace.New("/").Output(func(i diskspace.Info) bar.Output {
@@ -615,6 +702,10 @@ func main() {
 		SetOutput(nil).
 		Summary(battSummary).
 		Detail(battDetail)
+	mainModal.Mode("weather").
+		// Set to current conditions by the weather module.
+		SetOutput(makeIconOutput("mdi-alert-box-outline")).
+		Detail(wthr)
 	mainModal.Mode("timezones").
 		SetOutput(makeIconOutput("mdi-clock-outline")).
 		Detail(makeTzClock("Los Angeles", "America/Los_Angeles")).
