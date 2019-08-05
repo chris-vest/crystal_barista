@@ -401,29 +401,12 @@ func main() {
 			out := outputs.Pango(
 				pango.Icon("mdi-ship-wheel").Color(colors.Hex("#429429")),
 				spacer,
-				pango.Textf(context).Color(colors.Hex("#429429")),
+				pango.Textf("Namespace: %s", context).Color(colors.Hex("#429429")),
 			)
-			// out.OnClick(click.Left(func() {
-			// 	mainModalController.Toggle("kubeContext")
-			// }))
 			return out
 		})
 
-	// k8scon := funcs.Every(10*time.Minute, func(s bar.Sink) {
-	// 	contexts := k8sCtx()
-	// 	// contextual := len(contexts)
-	// 	// if contextual != 0 {
-	// 	// 	for i := 0; i < contextual; i++ {
-	// 	// 		funcs.Once(func(s bar.Sink) {
-	// 	// 			s.Output(pango.Text(contexts[i]))
-	// 	// 		})
-	// 	// 	}
-	// 	// }
-	// 	output := contexts[0]
-	// 	s.Output(pango.Text(output))
-	// })
-	// KUBERNETES CONTEXTS
-
+	// NordVPN
 	var nordVPNFormat = regexp.MustCompile(`.*?Status: (.*?)\n.*?\nCountry: (.*?)\nCity: (.*?)\n.*`)
 	nordVPN := shell.New("nordvpn", "status").
 		Every(time.Second).
