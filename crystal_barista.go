@@ -405,21 +405,21 @@ func main() {
 		case weather.Thunderstorm,
 			weather.TropicalStorm,
 			weather.Hurricane:
-			iconName = "stormy"
+			iconName = "lightning-rainy"
 		case weather.Drizzle,
 			weather.Hail:
-			iconName = "shower"
+			iconName = "rainy"
 		case weather.Rain:
-			iconName = "downpour"
+			iconName = "pouring"
 		case weather.Snow,
 			weather.Sleet:
-			iconName = "snow"
+			iconName = "snowy"
 		case weather.Mist,
 			weather.Smoke,
 			weather.Whirls,
 			weather.Haze,
 			weather.Fog:
-			iconName = "windy-cloudy"
+			iconName = "fog"
 		case weather.Clear:
 			if !w.Sunset.IsZero() && time.Now().After(w.Sunset) {
 				iconName = "night"
@@ -429,7 +429,7 @@ func main() {
 				iconName = "sunny"
 			}
 		case weather.PartlyCloudy:
-			iconName = "partly-sunny"
+			iconName = "partly-cloudy"
 		case weather.Cloudy, weather.Overcast:
 			iconName = "cloudy"
 		case weather.Tornado,
@@ -437,7 +437,7 @@ func main() {
 			iconName = "windy"
 		}
 		if iconName == "" {
-			iconName = "warning-outline"
+			iconName = "cloudy-alert"
 		} else {
 			iconName = "weather-" + iconName
 		}
