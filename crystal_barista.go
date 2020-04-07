@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -491,27 +490,28 @@ func main() {
 		})
 
 	// NordVPN
-	var nordVPNFormat = regexp.MustCompile(`.*?Status: (.*?)\n.*?\nCountry: (.*?)\nCity: (.*?)\n.*`)
-	nordVPN := shell.New("nordvpn", "status").
-		Every(time.Second).
-		Output(func(line string) bar.Output {
-			res := nordVPNFormat.FindStringSubmatch(line) // res[1] = status, res[2] = country, res[3] = city
-			status := res[1]
-			if status == "Disconnected" {
-				return outputs.Pango(
-					pango.Icon("mdi-vpn"),
-					spacer,
-					pango.Textf("NordVPN %s", status),
-				)
-			}
-			country := res[2]
-			city := res[3]
-			return outputs.Pango(
-				pango.Icon("mdi-vpn"),
-				spacer,
-				pango.Textf("NordVPN %s to %s, %s", status, city, country).Small(),
-			)
-		})
+	// var nordVPNFormat = regexp.MustCompile(`.*?Status: (.*?)\n.*?\nCountry: (.*?)\nCity: (.*?)\n.*`)
+	// nordVPN := shell.New("nordvpn", "status").
+	// 	Every(time.Second).
+	// 	Output(func(line string) bar.Output {
+	// 		res := nordVPNFormat.FindStringSubmatch(line) // res[1] = status, res[2] = country, res[3] = city
+	// 		status := res[1]
+	// 		check := strings.Contains(line, "Disconnected") // true
+	// 		if check == true {
+	// 			return outputs.Pango(
+	// 				pango.Icon("mdi-vpn"),
+	// 				spacer,
+	// 				pango.Textf("NordVPN Disconnected"),
+	// 			)
+	// 		}
+	// 		country := res[2]
+	// 		city := res[3]
+	// 		return outputs.Pango(
+	// 			pango.Icon("mdi-vpn"),
+	// 			spacer,
+	// 			pango.Textf("NordVPN %s to %s, %s", status, city, country).Small(),
+	// 		)
+	// 	})
 
 	loadAvg := sysinfo.New().Output(func(s sysinfo.Info) bar.Output {
 		out := outputs.Pango(
@@ -681,7 +681,7 @@ func main() {
 	mainModal.Mode("network").
 		SetOutput(makeIconOutput("mdi-ethernet")).
 		Summary(wifiName).
-		Detail(wifiDetails, netsp, net, nordVPN)
+		Detail(wifiDetails, netsp, net)
 	mainModal.Mode("media").
 		SetOutput(makeIconOutput("mdi-music")).
 		Add(vol, mediaSummary).
