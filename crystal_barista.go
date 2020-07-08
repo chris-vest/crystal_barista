@@ -43,7 +43,6 @@ import (
 	"barista.run/pango"
 	"barista.run/pango/icons/mdi"
 
-	colorful "github.com/lucasb-eyer/go-colorful"
 	"github.com/martinlindhe/unit"
 	keyring "github.com/zalando/go-keyring"
 )
@@ -85,11 +84,11 @@ func formatMediaTime(d time.Duration) string {
 func makeMediaIconAndPosition(m media.Info) *pango.Node {
 	iconAndPosition := pango.Icon("mdi-music")
 	if m.PlaybackStatus == media.Playing {
-		iconAndPosition.Color(colors.Hex("#429429")).Append(spacer,
+		iconAndPosition.Append(spacer,
 			pango.Textf("%s/", formatMediaTime(m.Position())))
 	}
 	if m.PlaybackStatus == media.Paused || m.PlaybackStatus == media.Playing {
-		iconAndPosition.Color(colors.Hex("#429429")).Append(spacer,
+		iconAndPosition.Append(spacer,
 			pango.Textf("%s", formatMediaTime(m.Length)))
 	}
 	return iconAndPosition
@@ -249,9 +248,9 @@ func main() {
 		if v < 0.3 {
 			v = 0.3
 		}
-		colors.Set("bad", colorful.Hcl(40, 1.0, v).Clamped())
-		colors.Set("degraded", colorful.Hcl(90, 1.0, v).Clamped())
-		colors.Set("good", colorful.Hcl(120, 1.0, v).Clamped())
+		colors.Set("bad", colors.Hex("#FF5555"))
+		colors.Set("degraded", colors.Hex("#FFB86C"))
+		colors.Set("good", colors.Hex("#50FA7B"))
 	}
 
 	if err := setupOauthEncryption(); err != nil {
@@ -332,11 +331,11 @@ func main() {
 		case i.RemainingPct() <= 5:
 			out.Urgent(true)
 		case i.RemainingPct() <= 25:
-			out.Color(colors.Hex("#f44141"))
+			out.Color(colors.Hex("#FF5555"))
 		case i.RemainingPct() <= 50:
-			out.Color(colors.Hex("#f4f441"))
+			out.Color(colors.Hex("#FFB86C"))
 		case i.RemainingPct() <= 100:
-			out.Color(colors.Hex("#429429"))
+			out.Color(colors.Hex("#50FA7B"))
 		}
 		return out
 	}), 1)
@@ -364,11 +363,13 @@ func main() {
 		// Full name, frequency, bssid in detail mode
 		out.Append(outputs.Pango(
 			pango.Icon("mdi-wifi"),
+			spacer,
 			pango.Text(i.SSID),
 		))
 		out.Append(outputs.Textf(" %2.1f Ghz", i.Frequency.Gigahertz()))
 		out.Append(outputs.Pango(
 			pango.Icon("mdi-access-point"),
+			spacer,
 			pango.Text(i.AccessPointMAC),
 		))
 		return out
@@ -470,9 +471,9 @@ func main() {
 		Every(time.Second).
 		Output(func(context string) bar.Output {
 			out := outputs.Pango(
-				pango.Icon("mdi-ship-wheel").Color(colors.Hex("#429429")),
+				pango.Icon("mdi-ship-wheel"),
 				spacer,
-				pango.Textf(context).Color(colors.Hex("#429429")),
+				pango.Textf(context),
 			)
 			out.OnClick(click.Left(func() {
 				mainModalController.Toggle("kubeContext")
@@ -484,34 +485,10 @@ func main() {
 		Every(time.Second).
 		Output(func(context string) bar.Output {
 			out := outputs.Pango(
-				pango.Textf("Namespace: %s", context).Color(colors.Hex("#429429")),
+				pango.Textf("Namespace: %s", context),
 			)
 			return out
 		})
-
-	// NordVPN
-	// var nordVPNFormat = regexp.MustCompile(`.*?Status: (.*?)\n.*?\nCountry: (.*?)\nCity: (.*?)\n.*`)
-	// nordVPN := shell.New("nordvpn", "status").
-	// 	Every(time.Second).
-	// 	Output(func(line string) bar.Output {
-	// 		res := nordVPNFormat.FindStringSubmatch(line) // res[1] = status, res[2] = country, res[3] = city
-	// 		status := res[1]
-	// 		check := strings.Contains(line, "Disconnected") // true
-	// 		if check == true {
-	// 			return outputs.Pango(
-	// 				pango.Icon("mdi-vpn"),
-	// 				spacer,
-	// 				pango.Textf("NordVPN Disconnected"),
-	// 			)
-	// 		}
-	// 		country := res[2]
-	// 		city := res[3]
-	// 		return outputs.Pango(
-	// 			pango.Icon("mdi-vpn"),
-	// 			spacer,
-	// 			pango.Textf("NordVPN %s to %s, %s", status, city, country).Small(),
-	// 		)
-	// 	})
 
 	loadAvg := sysinfo.New().Output(func(s sysinfo.Info) bar.Output {
 		out := outputs.Pango(
@@ -655,15 +632,14 @@ func main() {
 			out := outputs.Group(
 				pango.Icon("mdi-github-circle").
 					Concat(spacer).
-					ConcatTextf("%d", n.Total())).
-				Color(colors.Hex("#f44141"))
+					ConcatTextf("%d", n.Total()))
 			mentions := n["mention"] + n["team_mention"]
 			if mentions > 0 {
 				out.Append(spacer)
 				out.Append(outputs.Pango(
 					pango.Icon("mdi-bell").
 						ConcatTextf("%d", mentions)).
-					Color(colors.Hex("#f44141")).
+					Color(colors.Hex("#FF5555")).
 					Urgent(true))
 			}
 			return out.Glue().OnClick(
