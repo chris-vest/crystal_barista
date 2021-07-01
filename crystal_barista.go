@@ -26,7 +26,6 @@ import (
 	"barista.run/modules/cputemp"
 	"barista.run/modules/diskio"
 	"barista.run/modules/diskspace"
-	"barista.run/modules/github"
 	"barista.run/modules/media"
 	"barista.run/modules/meminfo"
 	"barista.run/modules/meta/split"
@@ -35,6 +34,7 @@ import (
 	"barista.run/modules/shell"
 	"barista.run/modules/sysinfo"
 	"barista.run/modules/volume"
+	"barista.run/modules/volume/alsa"
 	"barista.run/modules/weather"
 	"barista.run/modules/weather/openweathermap"
 	"barista.run/modules/wlan"
@@ -375,10 +375,10 @@ func main() {
 		return out
 	}), 1)
 
-	vol := volume.DefaultMixer().Output(func(v volume.Volume) bar.Output {
+	vol := volume.New(alsa.DefaultMixer()).Output(func(v volume.Volume) bar.Output {
 		if v.Mute {
 			return outputs.
-				Pango(pango.Icon("ion-volume-off"), spacer, "MUT").
+				Pango(pango.Icon("mdi-volume-off")).
 				Color(colors.Scheme("degraded"))
 		}
 		iconName := "mute"
@@ -389,7 +389,7 @@ func main() {
 			iconName = "low"
 		}
 		return outputs.Pango(
-			pango.Icon("ion-volume-"+iconName),
+			pango.Icon("mdi-volume-"+iconName),
 			spacer,
 			pango.Textf("%2d%%", pct),
 		)
@@ -405,21 +405,21 @@ func main() {
 		case weather.Thunderstorm,
 			weather.TropicalStorm,
 			weather.Hurricane:
-			iconName = "lightning-rainy"
+			iconName = "stormy"
 		case weather.Drizzle,
 			weather.Hail:
-			iconName = "rainy"
+			iconName = "shower"
 		case weather.Rain:
-			iconName = "pouring"
+			iconName = "downpour"
 		case weather.Snow,
 			weather.Sleet:
-			iconName = "snowy"
+			iconName = "snow"
 		case weather.Mist,
 			weather.Smoke,
 			weather.Whirls,
 			weather.Haze,
 			weather.Fog:
-			iconName = "fog"
+			iconName = "windy-cloudy"
 		case weather.Clear:
 			if !w.Sunset.IsZero() && time.Now().After(w.Sunset) {
 				iconName = "night"
@@ -429,7 +429,7 @@ func main() {
 				iconName = "sunny"
 			}
 		case weather.PartlyCloudy:
-			iconName = "partly-cloudy"
+			iconName = "partly-sunny"
 		case weather.Cloudy, weather.Overcast:
 			iconName = "cloudy"
 		case weather.Tornado,
@@ -437,7 +437,7 @@ func main() {
 			iconName = "windy"
 		}
 		if iconName == "" {
-			iconName = "cloudy-alert"
+			iconName = "warning-outline"
 		} else {
 			iconName = "weather-" + iconName
 		}
@@ -624,32 +624,7 @@ func main() {
 
 	mediaSummary, mediaDetail := split.New(media.Auto().Output(mediaFormatFunc), 1)
 
-	ghNotify := github.New("%%GITHUB_CLIENT_ID%%", "%%GITHUB_CLIENT_SECRET%%").
-		Output(func(n github.Notifications) bar.Output {
-			if n.Total() == 0 {
-				return nil
-			}
-			out := outputs.Group(
-				pango.Icon("mdi-github-circle").
-					Concat(spacer).
-					ConcatTextf("%d", n.Total()))
-			mentions := n["mention"] + n["team_mention"]
-			if mentions > 0 {
-				out.Append(spacer)
-				out.Append(outputs.Pango(
-					pango.Icon("mdi-bell").
-						ConcatTextf("%d", mentions)).
-					Color(colors.Hex("#FF5555")).
-					Urgent(true))
-			}
-			return out.Glue().OnClick(
-				click.RunLeft("xdg-open", "https://github.com/notifications"))
-		})
-
 	mainModal := modal.New()
-	mainModal.Mode("notifications").
-		SetOutput(nil).
-		Add(ghNotify)
 	mainModal.Mode("kubeContext").
 		SetOutput(makeIconOutput("mdi-ship-wheel")).
 		Add(kubeContext).
